@@ -29,6 +29,8 @@
 #include <mutex>
 #include <vector>
 #include "openvino_utils.h"
+#include <ie_iextension.h>
+#include <ie_core.hpp>
 #include "triton/backend/backend_input_collector.h"
 #include "triton/backend/backend_memory.h"
 #include "triton/backend/backend_model.h"
@@ -142,7 +144,7 @@ ModelState::Create(TRITONBACKEND_Model* triton_model, ModelState** state)
         std::string("unexpected nullptr in BackendModelException"));
     RETURN_IF_ERROR(ex.err_);
   }
-  catch (const InferenceEngine::details::InferenceEngineException& e) {
+  catch (InferenceEngine::Exception& e) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INTERNAL,
         (std::string("ModelState::Create InferenceEngineException: ") +
@@ -279,9 +281,7 @@ ModelState::LoadCpuExtensions(triton::common::TritonJson::Value& params)
   if (!cpu_ext_path.empty()) {
     // CPU (MKLDNN) extensions is loaded as a shared library and passed as a
     // pointer to base extension
-    const auto extension_ptr =
-        InferenceEngine::make_so_pointer<InferenceEngine::IExtension>(
-            cpu_ext_path);
+    InferenceEngine::IExtensionPtr extension_ptr = std::make_shared<InferenceEngine::Extension>(cpu_ext_path);
     RETURN_IF_OPENVINO_ERROR(
         inference_engine_.AddExtension(extension_ptr),
         " loading custom CPU extensions");
@@ -708,7 +708,7 @@ ModelInstanceState::Create(
         std::string("unexpected nullptr in BackendModelInstanceException"));
     RETURN_IF_ERROR(ex.err_);
   }
-  catch (const InferenceEngine::details::InferenceEngineException& e) {
+  catch (InferenceEngine::Exception& e) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INTERNAL,
         (std::string("ModelState::Create InferenceEngineException: ") +
